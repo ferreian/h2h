@@ -290,31 +290,33 @@ if "df_resultado_h2h" in st.session_state:
 
                     st.markdown(f"#### 🎯 Cultivar Head: **{head_unico}** | Produtividade Média: **{prod_head_media} sc/ha**")
 
+                    # ✅ Cálculo correto: diferença linha a linha
+                    df_multi["Diferenca_individual"] = df_multi["Head_Mean"] - df_multi["Check_Mean"]
+
                     resumo = df_multi.groupby("Check").agg({
+                        "Diferenca_individual": "mean",
                         "Number_of_Win": "sum",
                         "Is_Draw": "sum",
                         "Check_Mean": "mean",
-                        "Head_Mean": "mean"  # 👈 Adicionado aqui
+                        "Head_Mean": "mean"
                     }).reset_index()
 
                     resumo.rename(columns={
                         "Check": "Cultivar Check",
+                        "Diferenca_individual": "Diferença Média",
                         "Number_of_Win": "Vitórias",
                         "Is_Draw": "Empates",
                         "Check_Mean": "Prod_sc_ha_media",
-                        "Head_Mean": "Head_sc_ha_media"  # 👈 Renomeado corretamente
+                        "Head_Mean": "Head_sc_ha_media"
                     }, inplace=True)
-
 
                     resumo["Num_Locais"] = df_multi.groupby("Check").size().values
                     resumo["% Vitórias"] = (resumo["Vitórias"] / resumo["Num_Locais"] * 100).round(1)
-                    resumo["Prod_sc_ha_media"] = resumo["Prod_sc_ha_media"].round(1)
-                    resumo["Head_sc_ha_media"] = resumo["Head_sc_ha_media"].round(1)
 
-                    # ✅ Aqui está a diferença real de produtividade entre Head e Check
-                    resumo["Diferença Média"] = (resumo["Head_sc_ha_media"] - resumo["Prod_sc_ha_media"]).round(1)
+                    resumo[["Prod_sc_ha_media", "Head_sc_ha_media", "Diferença Média"]] = resumo[[
+                        "Prod_sc_ha_media", "Head_sc_ha_media", "Diferença Média"
+                    ]].round(1)
 
-                    # Define colunas que vão para a tabela
                     resumo = resumo[[
                         "Cultivar Check",
                         "Num_Locais",
@@ -324,19 +326,28 @@ if "df_resultado_h2h" in st.session_state:
                         "% Vitórias"
                     ]]
 
-
                     col_tabela, col_grafico = st.columns([1.4, 1.6])
+
                     with col_tabela:
                         st.markdown("### 📊 Tabela Comparativa")
                         gb = GridOptionsBuilder.from_dataframe(resumo)
                         gb.configure_default_column(cellStyle={'fontSize': '14px'})
                         gb.configure_grid_options(headerHeight=30)
-                        custom_css = {".ag-header-cell-label": {"font-weight": "bold", "font-size": "15px", "color": "black"}}
+                        custom_css = {
+                            ".ag-header-cell-label": {
+                                "font-weight": "bold",
+                                "font-size": "15px",
+                                "color": "black"
+                            }
+                        }
+
                         AgGrid(resumo, gridOptions=gb.build(), height=400, custom_css=custom_css)
 
+                        # Exportação Excel
                         buffer = io.BytesIO()
                         with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
                             resumo.to_excel(writer, sheet_name="comparacao_multi_check", index=False)
+                        buffer.seek(0)
 
                         st.download_button(
                             label="📅 Baixar Comparação (Excel)",
@@ -373,5 +384,6 @@ if "df_resultado_h2h" in st.session_state:
                         st.plotly_chart(fig_diff, use_container_width=True)
                 else:
                     st.info("❓ Nenhuma comparação disponível com os Checks selecionados.")
+
 
 
