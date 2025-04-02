@@ -4,6 +4,8 @@ import io
 import plotly.graph_objects as go
 from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
+
+
 st.set_page_config(layout="wide")
 st.title("⚔️ Análise Head to Head via Excel")
 st.markdown("Carregue um arquivo Excel com as colunas **Local**, **Material**, **Produtividade** (sc/ha).")
@@ -291,23 +293,37 @@ if "df_resultado_h2h" in st.session_state:
                     resumo = df_multi.groupby("Check").agg({
                         "Number_of_Win": "sum",
                         "Is_Draw": "sum",
-                        "Check_Mean": "mean"
+                        "Check_Mean": "mean",
+                        "Head_Mean": "mean"  # 👈 Adicionado aqui
                     }).reset_index()
 
                     resumo.rename(columns={
                         "Check": "Cultivar Check",
                         "Number_of_Win": "Vitórias",
                         "Is_Draw": "Empates",
-                        "Check_Mean": "Prod_sc_ha_media"
+                        "Check_Mean": "Prod_sc_ha_media",
+                        "Head_Mean": "Head_sc_ha_media"  # 👈 Renomeado corretamente
                     }, inplace=True)
 
+
                     resumo["Num_Locais"] = df_multi.groupby("Check").size().values
-
                     resumo["% Vitórias"] = (resumo["Vitórias"] / resumo["Num_Locais"] * 100).round(1)
-                    resumo["Diferença Média"] = (resumo["% Vitórias"] - 50).round(1)
                     resumo["Prod_sc_ha_media"] = resumo["Prod_sc_ha_media"].round(1)
+                    resumo["Head_sc_ha_media"] = resumo["Head_sc_ha_media"].round(1)
 
-                    resumo = resumo[["Cultivar Check", "% Vitórias", "Num_Locais", "Prod_sc_ha_media", "Diferença Média"]]
+                    # ✅ Aqui está a diferença real de produtividade entre Head e Check
+                    resumo["Diferença Média"] = (resumo["Head_sc_ha_media"] - resumo["Prod_sc_ha_media"]).round(1)
+
+                    # Define colunas que vão para a tabela
+                    resumo = resumo[[
+                        "Cultivar Check",
+                        "Num_Locais",
+                        "Prod_sc_ha_media",
+                        "Head_sc_ha_media",
+                        "Diferença Média",
+                        "% Vitórias"
+                    ]]
+
 
                     col_tabela, col_grafico = st.columns([1.4, 1.6])
                     with col_tabela:
