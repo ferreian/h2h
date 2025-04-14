@@ -302,86 +302,91 @@ if uploaded_file is not None:
                 )
 
             # 📊 Estatísticas
-            num_locais = df_selecionado["Fazenda"].nunique()
-            vitorias = df_selecionado[df_selecionado["Difference (sc/ha)"] > 1].shape[0]
-            derrotas = df_selecionado[df_selecionado["Difference (sc/ha)"] < -1].shape[0]
-            empates = df_selecionado[df_selecionado["Difference (sc/ha)"].between(-1, 1)].shape[0]
+            if not df_selecionado.empty and "Fazenda" in df_selecionado.columns:
+                num_locais = df_selecionado["Fazenda"].nunique()
+                vitorias = df_selecionado[df_selecionado["Difference (sc/ha)"] > 1].shape[0]
+                derrotas = df_selecionado[df_selecionado["Difference (sc/ha)"] < -1].shape[0]
+                empates = df_selecionado[df_selecionado["Difference (sc/ha)"].between(-1, 1)].shape[0]
 
-            max_diff = df_selecionado["Difference (sc/ha)"].max() if not df_selecionado.empty else 0
-            min_diff = df_selecionado["Difference (sc/ha)"].min() if not df_selecionado.empty else 0
-            media_diff_vitorias = df_selecionado[df_selecionado["Difference (sc/ha)"] > 1]["Difference (sc/ha)"].mean() or 0
-            media_diff_derrotas = df_selecionado[df_selecionado["Difference (sc/ha)"] < -1]["Difference (sc/ha)"].mean() or 0
+                max_diff = df_selecionado["Difference (sc/ha)"].max() or 0
+                min_diff = df_selecionado["Difference (sc/ha)"].min() or 0
+                media_diff_vitorias = df_selecionado[df_selecionado["Difference (sc/ha)"] > 1]["Difference (sc/ha)"].mean() or 0
+                media_diff_derrotas = df_selecionado[df_selecionado["Difference (sc/ha)"] < -1]["Difference (sc/ha)"].mean() or 0
 
-            # 🔹 Cards de Resumo
-            col4, col5, col6, col7 = st.columns(4)
+                # 🔹 Cards de Resumo
+                col4, col5, col6, col7 = st.columns(4)
 
-            with col4:
-                st.markdown(f"""
-                    <div style="background-color:#f2f2f2; padding:15px; border-radius:10px; text-align:center;">
-                        <h5 style="font-weight:bold; color:#333;">📍 Número de Locais</h5>
-                        <div style="font-size: 20px; font-weight:bold; color:#f2f2f2;">&nbsp;</div>
-                        <h2 style="margin: 10px 0; color:#333; font-weight:bold; font-size: 4em;">{num_locais}</h2>
-                        <div style="font-size: 20px; font-weight:bold; color:#f2f2f2;">&nbsp;</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                with col4:
+                    st.markdown(f"""
+                        <div style="background-color:#f2f2f2; padding:15px; border-radius:10px; text-align:center;">
+                            <h5 style="font-weight:bold; color:#333;">📍 Número de Locais</h5>
+                            <div style="font-size: 20px; font-weight:bold;">&nbsp;</div>
+                            <h2 style="margin: 10px 0; color:#333; font-weight:bold; font-size: 4em;">{num_locais}</h2>
+                            <div style="font-size: 20px; font-weight:bold;">&nbsp;</div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
-            with col5:
-                st.markdown(f"""
-                    <div style="background-color:#01B8AA80; padding:15px; border-radius:10px; text-align:center;">
-                        <h5 style="font-weight:bold; color:#004d47;">✅ Vitórias</h5>
-                        <div style="font-size: 20px; font-weight:bold; color:#004d47;">Max: {max_diff:.1f} sc/ha</div>
-                        <h2 style="margin: 10px 0; color:#004d47; font-weight:bold; font-size: 4em;">{vitorias}</h2>
-                        <div style="font-size: 20px; font-weight:bold; color:#004d47;">Média: {media_diff_vitorias:.1f} sc/ha</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                with col5:
+                    st.markdown(f"""
+                        <div style="background-color:#01B8AA80; padding:15px; border-radius:10px; text-align:center;">
+                            <h5 style="font-weight:bold; color:#004d47;">✅ Vitórias</h5>
+                            <div style="font-size: 20px; font-weight:bold;">Max: {max_diff:.1f} sc/ha</div>
+                            <h2 style="margin: 10px 0; color:#004d47; font-weight:bold; font-size: 4em;">{vitorias}</h2>
+                            <div style="font-size: 20px; font-weight:bold;">Média: {media_diff_vitorias:.1f} sc/ha</div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
-            with col6:
-                st.markdown(f"""
-                    <div style="background-color:#F2C80F80; padding:15px; border-radius:10px; text-align:center;">
-                        <h5 style="font-weight:bold; color:#8a7600;">➖ Empates</h5>
-                        <div style="font-size: 20px; font-weight:bold; color:#8a7600;">Entre -1 e 1 sc/ha</div>
-                        <h2 style="margin: 10px 0; color:#8a7600; font-weight:bold; font-size: 4em;">{empates}</h2>
-                        <div style="font-size: 20px; font-weight:bold; color:#F2C80F80;">&nbsp;</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                with col6:
+                    st.markdown(f"""
+                        <div style="background-color:#F2C80F80; padding:15px; border-radius:10px; text-align:center;">
+                            <h5 style="font-weight:bold; color:#8a7600;">➖ Empates</h5>
+                            <div style="font-size: 20px; font-weight:bold;">Entre -1 e 1 sc/ha</div>
+                            <h2 style="margin: 10px 0; color:#8a7600; font-weight:bold; font-size: 4em;">{empates}</h2>
+                            <div style="font-size: 20px; font-weight:bold;">&nbsp;</div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
-            with col7:
-                st.markdown(f"""
-                    <div style="background-color:#FD625E80; padding:15px; border-radius:10px; text-align:center;">
-                        <h5 style="font-weight:bold; color:#7c1f1c;">❌ Derrotas</h5>
-                        <div style="font-size: 20px; font-weight:bold; color:#7c1f1c;">Min: {min_diff:.1f} sc/ha</div>
-                        <h2 style="margin: 10px 0; color:#7c1f1c; font-weight:bold; font-size: 4em;">{derrotas}</h2>
-                        <div style="font-size: 20px; font-weight:bold; color:#7c1f1c;">Média: {media_diff_derrotas:.1f} sc/ha</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                with col7:
+                    st.markdown(f"""
+                        <div style="background-color:#FD625E80; padding:15px; border-radius:10px; text-align:center;">
+                            <h5 style="font-weight:bold; color:#7c1f1c;">❌ Derrotas</h5>
+                            <div style="font-size: 20px; font-weight:bold;">Min: {min_diff:.1f} sc/ha</div>
+                            <h2 style="margin: 10px 0; color:#7c1f1c; font-weight:bold; font-size: 4em;">{derrotas}</h2>
+                            <div style="font-size: 20px; font-weight:bold;">Média: {media_diff_derrotas:.1f} sc/ha</div>
+                        </div>
+                    """, unsafe_allow_html=True)
 
-            # 🎯 Gráfico de Pizza - Resultado Geral do Head
-            col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
-            with col_p2:
-                st.markdown("""
-                    <div style="background-color: #f9f9f9; padding: 10px; border-radius: 12px; 
-                                box-shadow: 0px 2px 5px rgba(0,0,0,0.1); text-align: center;">
-                        <h4 style="margin-bottom: 0.5rem;">Resultado Geral do Head</h4>
-                """, unsafe_allow_html=True)
+                # 🎯 Gráfico de Pizza
+                col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
+                with col_p2:
+                    st.markdown("""
+                        <div style="background-color: #f9f9f9; padding: 10px; border-radius: 12px; 
+                                    box-shadow: 0px 2px 5px rgba(0,0,0,0.1); text-align: center;">
+                            <h4 style="margin-bottom: 0.5rem;">Resultado Geral do Head</h4>
+                    """, unsafe_allow_html=True)
 
-                fig_pizza = go.Figure(data=[go.Pie(
-                    labels=["Vitórias", "Empates", "Derrotas"],
-                    values=[vitorias, empates, derrotas],
-                    marker=dict(colors=["#01B8AA", "#F2C80F", "#FD625E"]),
-                    hole=0.6,
-                    textinfo='label+percent',
-                    textposition='outside',
-                    textfont=dict(size=20, color="black", family="Arial Black"),
-                )])
+                    fig_pizza = go.Figure(data=[go.Pie(
+                        labels=["Vitórias", "Empates", "Derrotas"],
+                        values=[vitorias, empates, derrotas],
+                        marker=dict(colors=["#01B8AA", "#F2C80F", "#FD625E"]),
+                        hole=0.6,
+                        textinfo='label+percent',
+                        textposition='outside',
+                        textfont=dict(size=20, color="black", family="Arial Black"),
+                    )])
 
-                fig_pizza.update_layout(
-                    margin=dict(t=10, b=60, l=10, r=10),
-                    height=280,
-                    showlegend=False
-                )
+                    fig_pizza.update_layout(
+                        margin=dict(t=10, b=60, l=10, r=10),
+                        height=280,
+                        showlegend=False
+                    )
 
-                st.plotly_chart(fig_pizza, use_container_width=True)
-                st.markdown("</div>", unsafe_allow_html=True)
+                    st.plotly_chart(fig_pizza, use_container_width=True)
+                    st.markdown("</div>", unsafe_allow_html=True)
+
+            else:
+                st.warning("⚠️ Nenhum dado disponível para calcular estatísticas.")
+
 
 
             # 📊 Gráfico Diferença por Local
