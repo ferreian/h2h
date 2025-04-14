@@ -2,13 +2,12 @@ import streamlit as st
 import pandas as pd
 import io
 import plotly.graph_objects as go
-from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
-
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 
 st.set_page_config(layout="wide")
 st.title("⚔️ Análise Head to Head via Excel")
-st.markdown("Carregue um arquivo Excel com as colunas **Local**, **Material**, **Produtividade** (sc/ha).")
+st.markdown("Carregue um arquivo Excel com as colunas **Local**, **Material**, **Produtividade** (sc/ha) e os filtros desejados.")
 
 uploaded_file = st.file_uploader("📁 Faça upload do arquivo Excel", type=["xlsx"])
 
@@ -20,146 +19,298 @@ if uploaded_file is not None:
         "Produtividade": "prod_sc_ha"
     }, inplace=True)
 
+    # Converte produtividade
     df["prod_sc_ha"] = pd.to_numeric(df["prod_sc_ha"], errors="coerce")
-    df = df[["Local", "Cultivar", "prod_sc_ha"]].dropna()
+
+    # Remove linhas com prod inválido
     df = df[df["prod_sc_ha"] > 0]
 
-    df["Pop_Final"] = None
-    df["Umidade (%)"] = None
+    # Garante que todas as colunas visíveis estão presentes
+    colunas_necessarias = [
+        "Fazenda", "Produtor", "Cidade", "Microrregiao", "Estado", "UF",
+        "Plantio", "Colheita", "Cultivar", "GM",
+        "Pop_Final", "Umidade (%)", "prod_kg_ha", "prod_sc_ha",
+        "Safra"
+    ]
+
+    colunas_disponiveis = [col for col in colunas_necessarias if col in df.columns]
+
+    # Subseta só com colunas disponíveis (mas só depois do filtro acima)
+    df = df[colunas_disponiveis].dropna()
+
 
     st.success("✅ Dados carregados e formatados!")
 
-    if st.button("🔁 Rodar Análise Head to Head"):
-        resultados_h2h = []
+    # Layout com coluna de filtros (15%) e tabela (85%)
+    col_filtros, col_tabela = st.columns([0.15, 0.85])
 
-        for local, grupo in df.groupby("Local"):
-            cultivares = grupo["Cultivar"].unique()
+    with col_filtros:
+        st.markdown("### 🎧 Filtros")
 
-            for head in cultivares:
-                prod_head = grupo.loc[grupo["Cultivar"] == head, "prod_sc_ha"].values[0]
+        # Filtros com Expander
+        filtros_expander = {
+            "Safra": "Safra",
+            "Microrregiao": "Microrregião",
+            "Estado": "Estado",
+            "Cidade": "Cidade"
+        }
 
-                for check in cultivares:
-                    if head == check:
-                        continue
-                    prod_check = grupo.loc[grupo["Cultivar"] == check, "prod_sc_ha"].values[0]
-                    diff = prod_head - prod_check
-                    win = int(diff > 1)
-                    draw = int(-1 <= diff <= 1)
+        for coluna, label in filtros_expander.items():
+            if coluna in df.columns:
+                with st.expander(f"{label}"):
+                    opcoes = df[coluna].dropna().unique().tolist()
+                    selecionados = st.multiselect(f"Selecionar {label}", opcoes, default=opcoes)
+                    df = df[df[coluna].isin(selecionados)]
 
-                    resultados_h2h.append({
-                        "Local": local,
-                        "Head": head,
-                        "Check": check,
-                        "Head_Mean": round(prod_head, 1),
-                        "Check_Mean": round(prod_check, 1),
-                        "Difference": round(diff, 1),
-                        "Number_of_Win": win,
-                        "Is_Draw": draw,
-                        "Percentage_of_Win": 100.0 if win else 0.0
-                    })
+        # Filtro por Slider - GM
+        if "GM" in df.columns:
+            min_gm = int(df["GM"].min())
+            max_gm = int(df["GM"].max())
+            if min_gm == max_gm:
+                st.info(f"Apenas um valor de GM disponível: {min_gm}")
+            else:
+                with st.expander("GM"):
+                    range_gm = st.slider(
+                        "Selecionar faixa de GM",
+                        min_value=min_gm,
+                        max_value=max_gm,
+                        value=(min_gm, max_gm),
+                        step=1
+                    )
+                    df = df[(df["GM"] >= range_gm[0]) & (df["GM"] <= range_gm[1])]
 
-        df_resultado = pd.DataFrame(resultados_h2h)
-        st.session_state["df_resultado_h2h"] = df_resultado
-        st.success("✅ Análise concluída!")
+    with col_tabela:
+        st.markdown("## 📋 Tabela com Filtros Aplicados")
 
-if "df_resultado_h2h" in st.session_state:
-    df_resultado = st.session_state["df_resultado_h2h"]
-
-        # 🎯 Filtro por Local
-    locais_disponiveis = sorted(df_resultado["Local"].unique())
-    local_selecionado = st.multiselect("📍 Filtrar por Local", options=locais_disponiveis, default=locais_disponiveis)
-
-    # Aplica filtro no DataFrame
-    df_resultado_filtrado = df_resultado[df_resultado["Local"].isin(local_selecionado)]
-
-
-    st.markdown("### 🔹 Selecione os cultivares para comparação Head to Head")
-    cultivares_unicos = sorted(df_resultado_filtrado["Head"].unique())
-
-    col1, col2, col3 = st.columns([0.3, 0.4, 0.3])
-
-    with col1:
-        head_select = st.selectbox("Selecionar Cultivar Head", options=cultivares_unicos, key="head_select")
-    with col2:
-        st.markdown("<h1 style='text-align: center;'>X</h1>", unsafe_allow_html=True)
-    with col3:
-        check_select = st.selectbox("Selecionar Cultivar Check", options=cultivares_unicos, key="check_select")
-
-    if head_select and check_select and head_select != check_select:
-        df_selecionado = df_resultado_filtrado[
-            (df_resultado_filtrado["Head"] == head_select) & (df_resultado_filtrado["Check"] == check_select)
+        # Colunas desejadas
+        colunas_visiveis = [
+            "Fazenda", "Produtor", "Cidade", "Microrregiao", "Estado", "UF",
+            "Plantio", "Colheita", "Cultivar", "GM",
+            "Pop_Final", "Umidade (%)", "prod_kg_ha", "prod_sc_ha"
         ]
 
+        # Verifica se todas existem no DataFrame
+        colunas_presentes = [col for col in colunas_visiveis if col in df.columns]
 
-        st.markdown(f"### 📋 Tabela Head to Head: <b>{head_select} x {check_select}</b>", unsafe_allow_html=True)
+        df_exibicao = df[colunas_presentes].copy()
 
-        if not df_selecionado.empty:
-            df_h2h_fmt = df_selecionado.copy()
+        gb = GridOptionsBuilder.from_dataframe(df_exibicao)
+        gb.configure_default_column(resizable=True, sortable=True, filter=True)
+        grid_options = gb.build()
 
-            cell_style_js = JsCode("""
-            function(params) {
-                let value = params.value;
-                let min = 0;
-                let max = 100;
-                let ratio = (value - min) / (max - min);
-
-                let r, g, b;
-                if (ratio < 0.5) {
-                    r = 253;
-                    g = 98 + ratio * 2 * (200 - 98);
-                    b = 94 + ratio * 2 * (15 - 94);
-                } else {
-                    r = 242 - (ratio - 0.5) * 2 * (242 - 1);
-                    g = 200 - (ratio - 0.5) * 2 * (200 - 184);
-                    b = 15 + (ratio - 0.5) * 2 * (170 - 15);
-                }
-
-                return {
-                    'backgroundColor': 'rgb(' + r + ',' + g + ',' + b + ')',
-                    'color': 'black',
-                    'fontWeight': 'bold',
-                    'fontSize': '16px'
-                }
+        custom_css = {
+            ".ag-header-cell-text": {
+                "font-weight": "bold",
+                "color": "black"
             }
-            """)
+        }
 
-            gb = GridOptionsBuilder.from_dataframe(df_h2h_fmt)
+        AgGrid(
+            df_exibicao,
+            gridOptions=grid_options,
+            height=500,
+            custom_css=custom_css
+        )
 
-            for col in df_h2h_fmt.select_dtypes(include=["float"]).columns:
-                if col in ["Head_Mean", "Check_Mean"]:
-                    gb.configure_column(col, type=["numericColumn"], valueFormatter="x.toFixed(1)", cellStyle=cell_style_js)
-                else:
-                    gb.configure_column(col, type=["numericColumn"], valueFormatter="x.toFixed(1)")
+        # Exportar para Excel
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+            df_exibicao.to_excel(writer, index=False, sheet_name="Tabela Filtrada")
+        buffer.seek(0)
 
-            gb.configure_default_column(cellStyle={'fontSize': '14px'})
-            gb.configure_grid_options(headerHeight=30)
+        st.download_button(
+            label="📥 Baixar Excel com Filtros",
+            data=buffer,
+            file_name="tabela_filtrada.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
-            custom_css = {
-                ".ag-header-cell-label": {
+        # Análise Head to Head
+
+        # Botão para rodar análise Head to Head
+        if st.button("🔁 Rodar Análise Head to Head"):
+            resultados_h2h = []
+
+            for fazenda, grupo in df_exibicao.groupby("Fazenda"):
+                cultivares = grupo["Cultivar"].unique()
+
+                for head in cultivares:
+                    prod_head = grupo.loc[grupo["Cultivar"] == head, "prod_sc_ha"].values[0]
+
+                    for check in cultivares:
+                        if head == check:
+                            continue
+                        prod_check = grupo.loc[grupo["Cultivar"] == check, "prod_sc_ha"].values[0]
+                        diff = prod_head - prod_check
+                        win = int(diff > 1)
+                        draw = int(-1 <= diff <= 1)
+
+                        resultados_h2h.append({
+                            "Fazenda": fazenda,
+                            "Head": head,
+                            "Check": check,
+                            "Head_Mean": round(prod_head, 1),
+                            "Check_Mean": round(prod_check, 1),
+                            "Difference (sc/ha)": round(diff, 1),
+                            "Vitória": win,
+                            "Empate": draw,
+                            "% Vitória": 100.0 if win else 0.0
+                        })
+
+            df_h2h = pd.DataFrame(resultados_h2h)
+
+            if not df_h2h.empty:
+                st.session_state["h2h_resultado"] = df_h2h
+                st.success("✅ Análise Head to Head concluída com sucesso!")
+            else:
+                st.warning("⚠️ Nenhuma comparação gerada com os dados atuais.")
+
+        if "h2h_resultado" in st.session_state:
+            st.markdown("## 📊 Resultado Head to Head")
+
+            df_h2h = st.session_state["h2h_resultado"]
+
+            gb_h2h = GridOptionsBuilder.from_dataframe(df_h2h)
+            gb_h2h.configure_default_column(resizable=True, sortable=True, filter=True)
+            grid_h2h = gb_h2h.build()
+
+            custom_css_h2h = {
+                ".ag-header-cell-text": {
                     "font-weight": "bold",
-                    "font-size": "15px",
                     "color": "black"
                 }
             }
 
-            AgGrid(
-                df_h2h_fmt,
-                gridOptions=gb.build(),
-                height=500,
-                custom_css=custom_css,
-                allow_unsafe_jscode=True
+            AgGrid(df_h2h, gridOptions=grid_h2h, height=500, custom_css=custom_css_h2h)
+
+            # Exportação da análise
+            buffer_h2h = io.BytesIO()
+            with pd.ExcelWriter(buffer_h2h, engine="xlsxwriter") as writer:
+                df_h2h.to_excel(writer, index=False, sheet_name="H2H")
+            buffer_h2h.seek(0)
+
+            st.download_button(
+                label="📥 Baixar Análise Head to Head",
+                data=buffer_h2h,
+                file_name="analise_head_to_head.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-            # 📊 Estatísticas
-            num_locais = df_selecionado["Local"].nunique()
-            vitorias = df_selecionado[df_selecionado["Difference"] > 1].shape[0]
-            derrotas = df_selecionado[df_selecionado["Difference"] < -1].shape[0]
-            empates = df_selecionado[df_selecionado["Difference"].between(-1, 1)].shape[0]
+        from st_aggrid import JsCode  # garante que esse import esteja no topo
 
-            max_diff = df_selecionado["Difference"].max() if not df_selecionado.empty else 0
-            min_diff = df_selecionado["Difference"].min() if not df_selecionado.empty else 0
-            media_diff_vitorias = df_selecionado[df_selecionado["Difference"] > 1]["Difference"].mean() or 0
-            media_diff_derrotas = df_selecionado[df_selecionado["Difference"] < -1]["Difference"].mean() or 0
+        if "h2h_resultado" in st.session_state:
+            df_resultado = st.session_state["h2h_resultado"]
+
+            df_resultado_filtrado = df_resultado.copy()
+
+            st.markdown("### 🔹 Selecione os cultivares para comparação Head to Head")
+            cultivares_unicos = sorted(df_resultado_filtrado["Head"].unique())
+
+            col1, col2, col3 = st.columns([0.3, 0.4, 0.3])
+
+            with col1:
+                head_select = st.selectbox("Selecionar Cultivar Head", options=cultivares_unicos, key="head_select")
+            with col2:
+                st.markdown("<h1 style='text-align: center;'>X</h1>", unsafe_allow_html=True)
+            with col3:
+                check_select = st.selectbox("Selecionar Cultivar Check", options=cultivares_unicos, key="check_select")
+
+
+            if head_select and check_select and head_select != check_select:
+                df_selecionado = df_resultado_filtrado[
+                    (df_resultado_filtrado["Head"] == head_select) & 
+                    (df_resultado_filtrado["Check"] == check_select)
+                ]
+
+                st.markdown(f"### 📋 Tabela Head to Head: <b>{head_select} x {check_select}</b>", unsafe_allow_html=True)
+
+                if not df_selecionado.empty:
+                    df_h2h_fmt = df_selecionado.copy()
+
+                    # Estilo condicional
+                    cell_style_js = JsCode("""
+                    function(params) {
+                        let value = params.value;
+                        let min = 0;
+                        let max = 100;
+                        let ratio = (value - min) / (max - min);
+
+                        let r, g, b;
+                        if (ratio < 0.5) {
+                            r = 253;
+                            g = 98 + ratio * 2 * (200 - 98);
+                            b = 94 + ratio * 2 * (15 - 94);
+                        } else {
+                            r = 242 - (ratio - 0.5) * 2 * (242 - 1);
+                            g = 200 - (ratio - 0.5) * 2 * (200 - 184);
+                            b = 15 + (ratio - 0.5) * 2 * (170 - 15);
+                        }
+
+                        return {
+                            'backgroundColor': 'rgb(' + r + ',' + g + ',' + b + ')',
+                            'color': 'black',
+                            'fontWeight': 'bold',
+                            'fontSize': '16px'
+                        }
+                    }
+                    """)
+
+                    gb = GridOptionsBuilder.from_dataframe(df_h2h_fmt)
+
+                    for col in df_h2h_fmt.select_dtypes(include=["float"]).columns:
+                        if col in ["Head_Mean", "Check_Mean"]:
+                            gb.configure_column(
+                                col,
+                                type=["numericColumn"],
+                                valueFormatter="x.toFixed(1)",
+                                cellStyle=cell_style_js
+                            )
+                        else:
+                            gb.configure_column(col, type=["numericColumn"], valueFormatter="x.toFixed(1)")
+
+
+                    gb.configure_default_column(cellStyle={'fontSize': '14px'})
+                    gb.configure_grid_options(headerHeight=30)
+
+                    custom_css = {
+                        ".ag-header-cell-label": {
+                            "font-weight": "bold",
+                            "font-size": "15px",
+                            "color": "black"
+                        }
+                    }
+
+                    AgGrid(
+                        df_h2h_fmt,
+                        gridOptions=gb.build(),
+                        height=500,
+                        custom_css=custom_css,
+                        allow_unsafe_jscode=True
+                    )
+
+                # Exportar comparação Head to Head para Excel
+                buffer = io.BytesIO()
+                with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                    df_h2h_fmt.to_excel(writer, index=False, sheet_name="Comparacao_H2H")
+                buffer.seek(0)
+
+                st.download_button(
+                    label="📥 Baixar Comparação Head to Head",
+                    data=buffer,
+                    file_name=f"comparacao_{head_select}_vs_{check_select}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            # 📊 Estatísticas
+            num_locais = df_selecionado["Fazenda"].nunique()
+            vitorias = df_selecionado[df_selecionado["Difference (sc/ha)"] > 1].shape[0]
+            derrotas = df_selecionado[df_selecionado["Difference (sc/ha)"] < -1].shape[0]
+            empates = df_selecionado[df_selecionado["Difference (sc/ha)"].between(-1, 1)].shape[0]
+
+            max_diff = df_selecionado["Difference (sc/ha)"].max() if not df_selecionado.empty else 0
+            min_diff = df_selecionado["Difference (sc/ha)"].min() if not df_selecionado.empty else 0
+            media_diff_vitorias = df_selecionado[df_selecionado["Difference (sc/ha)"] > 1]["Difference (sc/ha)"].mean() or 0
+            media_diff_derrotas = df_selecionado[df_selecionado["Difference (sc/ha)"] < -1]["Difference (sc/ha)"].mean() or 0
 
             # 🔹 Cards de Resumo
             col4, col5, col6, col7 = st.columns(4)
@@ -204,7 +355,7 @@ if "df_resultado_h2h" in st.session_state:
                     </div>
                 """, unsafe_allow_html=True)
 
-            # 🎯 Gráfico de Pizza
+            # 🎯 Gráfico de Pizza - Resultado Geral do Head
             col_p1, col_p2, col_p3 = st.columns([1, 2, 1])
             with col_p2:
                 st.markdown("""
@@ -225,43 +376,59 @@ if "df_resultado_h2h" in st.session_state:
 
                 fig_pizza.update_layout(
                     margin=dict(t=10, b=60, l=10, r=10),
-                    height=330,
+                    height=280,
                     showlegend=False
                 )
 
                 st.plotly_chart(fig_pizza, use_container_width=True)
                 st.markdown("</div>", unsafe_allow_html=True)
 
+
             # 📊 Gráfico Diferença por Local
             st.markdown(f"### <b>📊 Diferença de Produtividade por Local - {head_select} X {check_select}</b>", unsafe_allow_html=True)
             st.markdown("### 📌 Dica: para melhor visualização dos rótulos, filtre para um número menor de locais.")
 
-            df_validos = df_selecionado[(df_selecionado["Head_Mean"] > 0) & (df_selecionado["Check_Mean"] > 0)]
-            df_validos = df_validos.sort_values("Difference")
+            df_validos = df_selecionado[
+                (df_selecionado["Head_Mean"] > 0) &
+                (df_selecionado["Check_Mean"] > 0)
+            ].copy()
 
-            cores_local = df_validos["Difference"].apply(
+            df_validos = df_validos.sort_values("Difference (sc/ha)")
+
+            # Cores com base na diferença
+            cores_local = df_validos["Difference (sc/ha)"].apply(
                 lambda x: "#01B8AA" if x > 1 else "#FD625E" if x < -1 else "#F2C80F"
             )
 
             fig_diff_local = go.Figure()
             fig_diff_local.add_trace(go.Bar(
-                y=df_validos["Local"],
-                x=df_validos["Difference"],
+                y=df_validos["Fazenda"],  # Análise por Fazenda
+                x=df_validos["Difference (sc/ha)"],
                 orientation='h',
-                text=df_validos["Difference"].round(1),
+                text=df_validos["Difference (sc/ha)"].round(1),
                 textposition="outside",
                 textfont=dict(size=20, family="Arial Black", color="black"),
                 marker_color=cores_local
             ))
 
             fig_diff_local.update_layout(
-                title=dict(text=f"<b>📍 Diferença de Produtividade por Local — {head_select} X {check_select}</b>", font=dict(size=20, family="Arial Black")),
-                xaxis=dict(title=dict(text="<b>Diferença (sc/ha)</b>", font=dict(size=20)), tickfont=dict(size=20)),
-                yaxis=dict(title=dict(text="<b>Local</b>", font=dict(size=20)), tickfont=dict(size=20)),
+                title=dict(
+                    text=f"<b>📍 Diferença de Produtividade por Local — {head_select} X {check_select}</b>",
+                    font=dict(size=20, family="Arial Black", color="black")  # Título preto
+                ),
+                xaxis=dict(
+                    title=dict(text="<b>Diferença (sc/ha)</b>", font=dict(size=20, color="black")),
+                    tickfont=dict(size=20, color="black")
+                ),
+                yaxis=dict(
+                    title=dict(text="<b>Local</b>", font=dict(size=20, color="black")),
+                    tickfont=dict(size=20, color="black")
+                ),
                 margin=dict(t=40, b=40, l=100, r=40),
                 height=600,
                 showlegend=False
             )
+
 
             st.plotly_chart(fig_diff_local, use_container_width=True)
 
@@ -290,13 +457,15 @@ if "df_resultado_h2h" in st.session_state:
 
                     st.markdown(f"#### 🎯 Cultivar Head: **{head_unico}** | Produtividade Média: **{prod_head_media} sc/ha**")
 
-                    # ✅ Cálculo correto: diferença linha a linha
+                    # Calcula diferença linha a linha
                     df_multi["Diferenca_individual"] = df_multi["Head_Mean"] - df_multi["Check_Mean"]
+                    df_multi["Vitória"] = (df_multi["Difference (sc/ha)"] > 1).astype(int)
+                    df_multi["Empate"] = df_multi["Difference (sc/ha)"].between(-1, 1).astype(int)
 
                     resumo = df_multi.groupby("Check").agg({
                         "Diferenca_individual": "mean",
-                        "Number_of_Win": "sum",
-                        "Is_Draw": "sum",
+                        "Vitória": "sum",
+                        "Empate": "sum",
                         "Check_Mean": "mean",
                         "Head_Mean": "mean"
                     }).reset_index()
@@ -304,8 +473,8 @@ if "df_resultado_h2h" in st.session_state:
                     resumo.rename(columns={
                         "Check": "Cultivar Check",
                         "Diferenca_individual": "Diferença Média",
-                        "Number_of_Win": "Vitórias",
-                        "Is_Draw": "Empates",
+                        "Vitória": "Vitórias",
+                        "Empate": "Empates",
                         "Check_Mean": "Prod_sc_ha_media",
                         "Head_Mean": "Head_sc_ha_media"
                     }, inplace=True)
@@ -373,9 +542,9 @@ if "df_resultado_h2h" in st.session_state:
                         ))
 
                         fig_diff.update_layout(
-                            title=dict(text="📊 Diferença Média de Produtividade", font=dict(size=20, family="Arial Black")),
-                            xaxis=dict(title=dict(text="Diferença Média (sc/ha)", font=dict(size=16)), tickfont=dict(size=14)),
-                            yaxis=dict(title=dict(text="Check"), tickfont=dict(size=14)),
+                            title=dict(text="📊 Diferença Média de Produtividade", font=dict(size=20, family="Arial Black", color="black")),
+                            xaxis=dict(title=dict(text="Diferença Média (sc/ha)", font=dict(size=16, color="black")), tickfont=dict(size=14, color="black")),
+                            yaxis=dict(title=dict(text="Check", font=dict(size=14, color="black")), tickfont=dict(size=14, color="black")),
                             margin=dict(t=30, b=40, l=60, r=30),
                             height=400,
                             showlegend=False
@@ -384,6 +553,22 @@ if "df_resultado_h2h" in st.session_state:
                         st.plotly_chart(fig_diff, use_container_width=True)
                 else:
                     st.info("❓ Nenhuma comparação disponível com os Checks selecionados.")
+
+
+
+
+
+
+
+            
+
+
+
+
+
+
+
+        
 
 
 
