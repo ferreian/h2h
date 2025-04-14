@@ -376,175 +376,175 @@ if uploaded_file is not None:
 
 
 
-            # 📊 Gráfico Diferença por Local
-            st.markdown(f"### <b>📊 Diferença de Produtividade por Local - {head_select} X {check_select}</b>", unsafe_allow_html=True)
-            st.markdown("### 📌 Dica: para melhor visualização dos rótulos, filtre para um número menor de locais.")
+                # 📊 Gráfico Diferença por Local
+                st.markdown(f"### <b>📊 Diferença de Produtividade por Local - {head_select} X {check_select}</b>", unsafe_allow_html=True)
+                st.markdown("### 📌 Dica: para melhor visualização dos rótulos, filtre para um número menor de locais.")
 
-            df_validos = df_selecionado[
-                (df_selecionado["Head_Mean"] > 0) &
-                (df_selecionado["Check_Mean"] > 0)
-            ].copy()
+                df_validos = df_selecionado[
+                    (df_selecionado["Head_Mean"] > 0) &
+                    (df_selecionado["Check_Mean"] > 0)
+                ].copy()
 
-            df_validos = df_validos.sort_values("Difference (sc/ha)")
+                df_validos = df_validos.sort_values("Difference (sc/ha)")
 
-            # Cores com base na diferença
-            cores_local = df_validos["Difference (sc/ha)"].apply(
-                lambda x: "#01B8AA" if x > 1 else "#FD625E" if x < -1 else "#F2C80F"
-            )
+                # Cores com base na diferença
+                cores_local = df_validos["Difference (sc/ha)"].apply(
+                    lambda x: "#01B8AA" if x > 1 else "#FD625E" if x < -1 else "#F2C80F"
+                )
 
-            fig_diff_local = go.Figure()
-            fig_diff_local.add_trace(go.Bar(
-                y=df_validos["Fazenda"],  # Análise por Fazenda
-                x=df_validos["Difference (sc/ha)"],
-                orientation='h',
-                text=df_validos["Difference (sc/ha)"].round(1),
-                textposition="outside",
-                textfont=dict(size=20, family="Arial Black", color="black"),
-                marker_color=cores_local
-            ))
+                fig_diff_local = go.Figure()
+                fig_diff_local.add_trace(go.Bar(
+                    y=df_validos["Fazenda"],  # Análise por Fazenda
+                    x=df_validos["Difference (sc/ha)"],
+                    orientation='h',
+                    text=df_validos["Difference (sc/ha)"].round(1),
+                    textposition="outside",
+                    textfont=dict(size=20, family="Arial Black", color="black"),
+                    marker_color=cores_local
+                ))
 
-            fig_diff_local.update_layout(
-                title=dict(
-                    text=f"<b>📍 Diferença de Produtividade por Local — {head_select} X {check_select}</b>",
-                    font=dict(size=20, family="Arial Black", color="black")  # Título preto
-                ),
-                xaxis=dict(
-                    title=dict(text="<b>Diferença (sc/ha)</b>", font=dict(size=20, color="black")),
-                    tickfont=dict(size=20, color="black")
-                ),
-                yaxis=dict(
-                    title=dict(text="<b>Local</b>", font=dict(size=20, color="black")),
-                    tickfont=dict(size=20, color="black")
-                ),
-                margin=dict(t=40, b=40, l=100, r=40),
-                height=600,
-                showlegend=False
-            )
+                fig_diff_local.update_layout(
+                    title=dict(
+                        text=f"<b>📍 Diferença de Produtividade por Local — {head_select} X {check_select}</b>",
+                        font=dict(size=20, family="Arial Black", color="black")  # Título preto
+                    ),
+                    xaxis=dict(
+                        title=dict(text="<b>Diferença (sc/ha)</b>", font=dict(size=20, color="black")),
+                        tickfont=dict(size=20, color="black")
+                    ),
+                    yaxis=dict(
+                        title=dict(text="<b>Local</b>", font=dict(size=20, color="black")),
+                        tickfont=dict(size=20, color="black")
+                    ),
+                    margin=dict(t=40, b=40, l=100, r=40),
+                    height=600,
+                    showlegend=False
+                )
 
 
-            st.plotly_chart(fig_diff_local, use_container_width=True)
+                st.plotly_chart(fig_diff_local, use_container_width=True)
 
-            # 🔀 Comparação Multichecks
-            st.markdown("### 🔹 Comparação Head x Múltiplos Checks")
-            st.markdown("""
-            <small>
-            Essa análise permite comparar um cultivar (Head) com vários outros (Checks) ao mesmo tempo. 
-            Ela apresenta o percentual de vitórias, produtividade média e a diferença média de performance 
-            em relação aos demais cultivares selecionados.
-            </small>
-            """, unsafe_allow_html=True)
+                # 🔀 Comparação Multichecks
+                st.markdown("### 🔹 Comparação Head x Múltiplos Checks")
+                st.markdown("""
+                <small>
+                Essa análise permite comparar um cultivar (Head) com vários outros (Checks) ao mesmo tempo. 
+                Ela apresenta o percentual de vitórias, produtividade média e a diferença média de performance 
+                em relação aos demais cultivares selecionados.
+                </small>
+                """, unsafe_allow_html=True)
 
-            head_unico = st.selectbox("Cultivar Head", options=cultivares_unicos, key="multi_head")
-            opcoes_checks = [c for c in cultivares_unicos if c != head_unico]
-            checks_selecionados = st.multiselect("Cultivares Check", options=opcoes_checks, key="multi_checks")
+                head_unico = st.selectbox("Cultivar Head", options=cultivares_unicos, key="multi_head")
+                opcoes_checks = [c for c in cultivares_unicos if c != head_unico]
+                checks_selecionados = st.multiselect("Cultivares Check", options=opcoes_checks, key="multi_checks")
 
-            if head_unico and checks_selecionados:
-                df_multi = df_resultado[
-                    (df_resultado["Head"] == head_unico) &
-                    (df_resultado["Check"].isin(checks_selecionados))
-                ]
+                if head_unico and checks_selecionados:
+                    df_multi = df_resultado[
+                        (df_resultado["Head"] == head_unico) &
+                        (df_resultado["Check"].isin(checks_selecionados))
+                    ]
 
-                if not df_multi.empty:
-                    prod_head_media = df_multi["Head_Mean"].mean().round(1)
+                    if not df_multi.empty:
+                        prod_head_media = df_multi["Head_Mean"].mean().round(1)
 
-                    st.markdown(f"#### 🎯 Cultivar Head: **{head_unico}** | Produtividade Média: **{prod_head_media} sc/ha**")
+                        st.markdown(f"#### 🎯 Cultivar Head: **{head_unico}** | Produtividade Média: **{prod_head_media} sc/ha**")
 
-                    # Calcula diferença linha a linha
-                    df_multi["Diferenca_individual"] = df_multi["Head_Mean"] - df_multi["Check_Mean"]
-                    df_multi["Vitória"] = (df_multi["Difference (sc/ha)"] > 1).astype(int)
-                    df_multi["Empate"] = df_multi["Difference (sc/ha)"].between(-1, 1).astype(int)
+                        # Calcula diferença linha a linha
+                        df_multi["Diferenca_individual"] = df_multi["Head_Mean"] - df_multi["Check_Mean"]
+                        df_multi["Vitória"] = (df_multi["Difference (sc/ha)"] > 1).astype(int)
+                        df_multi["Empate"] = df_multi["Difference (sc/ha)"].between(-1, 1).astype(int)
 
-                    resumo = df_multi.groupby("Check").agg({
-                        "Diferenca_individual": "mean",
-                        "Vitória": "sum",
-                        "Empate": "sum",
-                        "Check_Mean": "mean",
-                        "Head_Mean": "mean"
-                    }).reset_index()
+                        resumo = df_multi.groupby("Check").agg({
+                            "Diferenca_individual": "mean",
+                            "Vitória": "sum",
+                            "Empate": "sum",
+                            "Check_Mean": "mean",
+                            "Head_Mean": "mean"
+                        }).reset_index()
 
-                    resumo.rename(columns={
-                        "Check": "Cultivar Check",
-                        "Diferenca_individual": "Diferença Média",
-                        "Vitória": "Vitórias",
-                        "Empate": "Empates",
-                        "Check_Mean": "Prod_sc_ha_media",
-                        "Head_Mean": "Head_sc_ha_media"
-                    }, inplace=True)
+                        resumo.rename(columns={
+                            "Check": "Cultivar Check",
+                            "Diferenca_individual": "Diferença Média",
+                            "Vitória": "Vitórias",
+                            "Empate": "Empates",
+                            "Check_Mean": "Prod_sc_ha_media",
+                            "Head_Mean": "Head_sc_ha_media"
+                        }, inplace=True)
 
-                    resumo["Num_Locais"] = df_multi.groupby("Check").size().values
-                    resumo["% Vitórias"] = (resumo["Vitórias"] / resumo["Num_Locais"] * 100).round(1)
+                        resumo["Num_Locais"] = df_multi.groupby("Check").size().values
+                        resumo["% Vitórias"] = (resumo["Vitórias"] / resumo["Num_Locais"] * 100).round(1)
 
-                    resumo[["Prod_sc_ha_media", "Head_sc_ha_media", "Diferença Média"]] = resumo[[
-                        "Prod_sc_ha_media", "Head_sc_ha_media", "Diferença Média"
-                    ]].round(1)
+                        resumo[["Prod_sc_ha_media", "Head_sc_ha_media", "Diferença Média"]] = resumo[[
+                            "Prod_sc_ha_media", "Head_sc_ha_media", "Diferença Média"
+                        ]].round(1)
 
-                    resumo = resumo[[
-                        "Cultivar Check",
-                        "Num_Locais",
-                        "Prod_sc_ha_media",
-                        "Head_sc_ha_media",
-                        "Diferença Média",
-                        "% Vitórias"
-                    ]]
+                        resumo = resumo[[
+                            "Cultivar Check",
+                            "Num_Locais",
+                            "Prod_sc_ha_media",
+                            "Head_sc_ha_media",
+                            "Diferença Média",
+                            "% Vitórias"
+                        ]]
 
-                    col_tabela, col_grafico = st.columns([1.4, 1.6])
+                        col_tabela, col_grafico = st.columns([1.4, 1.6])
 
-                    with col_tabela:
-                        st.markdown("### 📊 Tabela Comparativa")
-                        gb = GridOptionsBuilder.from_dataframe(resumo)
-                        gb.configure_default_column(cellStyle={'fontSize': '14px'})
-                        gb.configure_grid_options(headerHeight=30)
-                        custom_css = {
-                            ".ag-header-cell-label": {
-                                "font-weight": "bold",
-                                "font-size": "15px",
-                                "color": "black"
+                        with col_tabela:
+                            st.markdown("### 📊 Tabela Comparativa")
+                            gb = GridOptionsBuilder.from_dataframe(resumo)
+                            gb.configure_default_column(cellStyle={'fontSize': '14px'})
+                            gb.configure_grid_options(headerHeight=30)
+                            custom_css = {
+                                ".ag-header-cell-label": {
+                                    "font-weight": "bold",
+                                    "font-size": "15px",
+                                    "color": "black"
+                                }
                             }
-                        }
 
-                        AgGrid(resumo, gridOptions=gb.build(), height=400, custom_css=custom_css)
+                            AgGrid(resumo, gridOptions=gb.build(), height=400, custom_css=custom_css)
 
-                        # Exportação Excel
-                        buffer = io.BytesIO()
-                        with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-                            resumo.to_excel(writer, sheet_name="comparacao_multi_check", index=False)
-                        buffer.seek(0)
+                            # Exportação Excel
+                            buffer = io.BytesIO()
+                            with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+                                resumo.to_excel(writer, sheet_name="comparacao_multi_check", index=False)
+                            buffer.seek(0)
 
-                        st.download_button(
-                            label="📅 Baixar Comparação (Excel)",
-                            data=buffer.getvalue(),
-                            file_name=f"comparacao_{head_unico}_vs_checks.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+                            st.download_button(
+                                label="📅 Baixar Comparação (Excel)",
+                                data=buffer.getvalue(),
+                                file_name=f"comparacao_{head_unico}_vs_checks.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                            )
 
-                    with col_grafico:
-                        fig_diff = go.Figure()
-                        cores_personalizadas = resumo["Diferença Média"].apply(
-                            lambda x: "#01B8AA" if x > 1 else "#FD625E" if x < -1 else "#F2C80F"
-                        )
+                        with col_grafico:
+                            fig_diff = go.Figure()
+                            cores_personalizadas = resumo["Diferença Média"].apply(
+                                lambda x: "#01B8AA" if x > 1 else "#FD625E" if x < -1 else "#F2C80F"
+                            )
 
-                        fig_diff.add_trace(go.Bar(
-                            y=resumo["Cultivar Check"],
-                            x=resumo["Diferença Média"],
-                            orientation='h',
-                            text=resumo["Diferença Média"].round(1),
-                            textposition="outside",
-                            textfont=dict(size=16, family="Arial Black", color="black"),
-                            marker_color=cores_personalizadas
-                        ))
+                            fig_diff.add_trace(go.Bar(
+                                y=resumo["Cultivar Check"],
+                                x=resumo["Diferença Média"],
+                                orientation='h',
+                                text=resumo["Diferença Média"].round(1),
+                                textposition="outside",
+                                textfont=dict(size=16, family="Arial Black", color="black"),
+                                marker_color=cores_personalizadas
+                            ))
 
-                        fig_diff.update_layout(
-                            title=dict(text="📊 Diferença Média de Produtividade", font=dict(size=20, family="Arial Black", color="black")),
-                            xaxis=dict(title=dict(text="Diferença Média (sc/ha)", font=dict(size=16, color="black")), tickfont=dict(size=14, color="black")),
-                            yaxis=dict(title=dict(text="Check", font=dict(size=14, color="black")), tickfont=dict(size=14, color="black")),
-                            margin=dict(t=30, b=40, l=60, r=30),
-                            height=400,
-                            showlegend=False
-                        )
+                            fig_diff.update_layout(
+                                title=dict(text="📊 Diferença Média de Produtividade", font=dict(size=20, family="Arial Black", color="black")),
+                                xaxis=dict(title=dict(text="Diferença Média (sc/ha)", font=dict(size=16, color="black")), tickfont=dict(size=14, color="black")),
+                                yaxis=dict(title=dict(text="Check", font=dict(size=14, color="black")), tickfont=dict(size=14, color="black")),
+                                margin=dict(t=30, b=40, l=60, r=30),
+                                height=400,
+                                showlegend=False
+                            )
 
-                        st.plotly_chart(fig_diff, use_container_width=True)
-                else:
-                    st.info("❓ Nenhuma comparação disponível com os Checks selecionados.")
+                            st.plotly_chart(fig_diff, use_container_width=True)
+                    else:
+                        st.info("❓ Nenhuma comparação disponível com os Checks selecionados.")
 
 
 
